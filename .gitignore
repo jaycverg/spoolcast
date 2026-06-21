@@ -1,0 +1,7 @@
+.secrets/
+queue/
+node_modules/
+*.log
+dist/
+.local/
+.DS_Store

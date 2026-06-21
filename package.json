@@ -1,0 +1,24 @@
+{
+  "name": "social-uploader",
+  "version": "1.0.0",
+  "description": "Folder-based CLI tool for scheduled YouTube and Facebook video uploads",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/run.ts",
+    "auth:youtube": "tsx src/auth-youtube.ts",
+    "auth:facebook": "tsx src/auth-facebook.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "googleapis": "^144.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
