@@ -22,6 +22,22 @@ export const PATHS = {
  */
 export const VIDEO_EXTENSIONS = ['.mp4', '.mov'] as const;
 
+/**
+ * Channel-level meta filenames (`queue/<channel>/…`), in preference order.
+ * `_meta.json` is preferred so the channel manifest is easy to spot at a glance;
+ * plain `meta.json` is still accepted for backward compatibility. The first that
+ * exists wins (see `readChannelManifest` in `manifest.ts`).
+ */
+export const CHANNEL_META_FILENAMES = ['_meta.json', 'meta.json'] as const;
+
+/**
+ * Shared (folder-default) video meta filename used inside a sub-folder as the
+ * fallback when a video has no stem-named `<video>.json` (see
+ * `resolveMetaForVideo` in `video.ts`). Deliberately plain `meta.json` so it
+ * stays distinct from the channel manifest's `_meta.json`.
+ */
+export const SHARED_META_FILENAME = 'meta.json';
+
 /** YouTube OAuth 2.0 scopes needed for upload and channel management. */
 export const YOUTUBE_SCOPES = [
   'https://www.googleapis.com/auth/youtube.upload',

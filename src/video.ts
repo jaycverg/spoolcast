@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { VIDEO_EXTENSIONS } from './config.js';
+import { VIDEO_EXTENSIONS, SHARED_META_FILENAME } from './config.js';
 
 /**
  * List every video file (by accepted extension) directly inside a folder,
@@ -32,8 +32,8 @@ export async function listVideoFiles(folderPath: string): Promise<string[]> {
  * are present (so per-video metadata overrides a folder default).
  *
  * The shared `meta.json` fallback is only consulted when `allowSharedMeta` is
- * true. At the channel root the sibling `meta.json` is the *channel* manifest
- * (targets/defaults), not a video meta, so callers there pass `false` and a
+ * true. At the channel root the sibling `_meta.json` / `meta.json` is the *channel*
+ * manifest (targets/defaults), not a video meta, so callers there pass `false` and a
  * channel-root video must carry its own `<stem>.json`.
  *
  * @param videoPath       - Absolute path to the video file.
@@ -51,7 +51,7 @@ export async function resolveMetaForVideo(
   if (await fileExists(named)) return named;
 
   if (allowSharedMeta) {
-    const shared = path.join(dir, 'meta.json');
+    const shared = path.join(dir, SHARED_META_FILENAME);
     if (await fileExists(shared)) return shared;
   }
 

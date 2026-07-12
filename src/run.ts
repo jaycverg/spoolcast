@@ -102,8 +102,8 @@ async function main(): Promise<void> {
     // Two sources of video items per channel:
     //   1. videos directly under the channel folder (channel-root items), and
     //   2. videos inside each immediate sub-folder.
-    // The channel-root `meta.json` is the channel manifest, so a channel-root video
-    // must carry its own `<stem>.json` (no shared-meta fallback). Sub-folder videos
+    // The channel-root `_meta.json`/`meta.json` is the channel manifest, so a channel-root
+    // video must carry its own `<stem>.json` (no shared-meta fallback). Sub-folder videos
     // may fall back to the sub-folder's `meta.json`.
     const locations: Array<{ dir: string; allowSharedMeta: boolean }> = [
       { dir: channelPath, allowSharedMeta: false },

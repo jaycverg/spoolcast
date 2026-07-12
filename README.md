@@ -24,7 +24,7 @@ never re-uploads something already posted — you don't tell it which folders to
 queue/
   state.json          # the posted-ledger, keyed by the video-stem path (git-ignored)
   mychannel/         # a channel folder
-    meta.json         # { "targets": [...] } + optional shared defaults/overrides (required)
+    _meta.json        # { "targets": [...] } + optional shared defaults/overrides (required; `meta.json` also accepted)
     promo.mp4         # a channel-root video item …
     promo.json        #   … with its own stem-named meta (channel-root needs this; required)
     promo.jpg         #   optional thumbnail for promo.mp4 (YouTube only)
@@ -37,11 +37,13 @@ queue/
 ```
 
 Content is organised **by channel**: each top-level folder under `queue/` is a channel whose
-`meta.json` declares the upload `targets` once. A **video item** is one video file plus its meta
-file; items inherit the channel's targets. On each run the tool:
+channel meta (`_meta.json`, preferred, or `meta.json`) declares the upload `targets` once. A
+**video item** is one video file plus its meta file; items inherit the channel's targets. On each
+run the tool:
 
-1. Scans `queue/` for **channel** folders — each must have a `meta.json` with a non-empty
-   `targets` array (a channel with a missing/invalid meta or empty targets is skipped whole).
+1. Scans `queue/` for **channel** folders — each must have a channel meta (`_meta.json` preferred,
+   `meta.json` accepted) with a non-empty `targets` array (a channel with a missing/invalid meta or
+   empty targets is skipped whole).
 2. Within each channel, collects **video items** from two places: videos directly under the
    channel folder, and videos inside each sub-folder. A folder may hold several videos. Each
    video's meta is its stem-named `<video>.json` (preferred) or — in a sub-folder — the shared
@@ -131,12 +133,12 @@ Both write to `.secrets/tokens.json`.
 
 ### 2. Add content
 
-Create a **channel** folder under `queue/` (e.g. `queue/mychannel/`) with a `meta.json`
+Create a **channel** folder under `queue/` (e.g. `queue/mychannel/`) with a `_meta.json`
 declaring its `targets` (and any shared defaults/overrides) — see
-[Channel `meta.json`](#channel-metajson). Then add video items, either:
+[Channel meta](#channel-meta). Then add video items, either:
 
 - **directly in the channel folder** — drop `clip.mp4` next to a stem-named `clip.json`
-  (channel-root videos must carry their own `<video>.json`; the channel `meta.json` is reserved);
+  (channel-root videos must carry their own `<video>.json`; the channel `_meta.json` is reserved);
 - **in a sub-folder** — create a folder per batch and drop one or more videos in it; each video
   uses its own `<video>.json` or falls back to a shared `meta.json` in that sub-folder.
 
@@ -155,15 +157,17 @@ npm start                  # live: uploads everything not already posted
 
 ---
 
-## `meta.json` reference
+## meta reference
 
-There are **two** kinds of `meta.json`: a **channel** meta (one per channel folder, declares the
-`targets`) and a **video** meta (one per video folder, the content fields).
+There are **two** kinds of meta file: a **channel** meta (one per channel folder, declares the
+`targets`) and a **video** `meta.json` (one per video folder, the content fields).
 
-### Channel `meta.json`
+### Channel meta
 
-Lives at `queue/<channel>/meta.json`. Only `targets` is required; any other top-level field is an
-optional **shared default** that fills gaps the video metas leave open.
+Lives at `queue/<channel>/_meta.json` (preferred — the leading underscore makes the channel
+manifest easy to spot; plain `meta.json` is also accepted, and `_meta.json` wins if both exist).
+Only `targets` is required; any other top-level field is an optional **shared default** that fills
+gaps the video metas leave open.
 
 ```json
 {
@@ -187,7 +191,7 @@ Each video's meta is resolved by stem: for `clip.mp4` the tool prefers a sibling
 otherwise (in a sub-folder) falls back to the shared `meta.json`. The stem-named file **wins**
 when both are present, so a folder can keep a shared `meta.json` default plus per-video overrides.
 A video sitting directly in the channel folder must use its own `<video>.json` — there the
-`meta.json` is the channel manifest, not a video meta. **Long-form video:**
+`_meta.json`/`meta.json` is the channel manifest, not a video meta. **Long-form video:**
 
 ```json
 {
@@ -396,8 +400,8 @@ social-uploader/
 │   └── run.ts           # entry point: scan queue for video items, dispatch (video vs short), record ledger
 └── queue/               # your content, organised by channel (git-ignored)
     ├── state.json           # the posted-ledger, keyed by the video-stem path (git-ignored)
-    └── <channel>/           # channel folder — meta.json declares targets
-        ├── meta.json        # channel meta
+    └── <channel>/           # channel folder — _meta.json declares targets
+        ├── _meta.json       # channel meta (or meta.json; _meta.json preferred)
         ├── <video>.mp4      # channel-root item: needs its own <video>.json
         ├── <video>.json
         └── <sub>/           # sub-folder: 1+ videos, each <video>.json or shared meta.json

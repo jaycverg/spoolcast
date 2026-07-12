@@ -7,8 +7,9 @@ See `README.md` for full user-facing docs; this file is the engineering contract
 
 A standalone Node/TypeScript CLI that uploads **scheduled** videos to YouTube channels and
 Facebook Pages from a `queue/` organised **by channel**: `queue/<channel>/<video>/`. The
-channel folder's `meta.json` declares the upload `targets` once (plus optional shared
-defaults/overrides); each child video folder inherits them. Manual run (`npm start`).
+channel folder's `_meta.json` (preferred, or `meta.json` for backward compat) declares the
+upload `targets` once (plus optional shared defaults/overrides); each child video folder
+inherits them. Manual run (`npm start`).
 Idempotency via a per-folder/per-target ledger at `queue/state.json`, keyed by the
 `<channel>/<video>` path. No web server, no daemon.
 
@@ -48,7 +49,7 @@ without running both.
 | `src/video.ts` | List **all** video files in a folder by extension (`listVideoFiles`, regardless of stem — a folder may hold several); resolve a single video's meta file as `<video-stem>.json` (preferred) or the shared sibling `meta.json` (`resolveMetaForVideo`, named wins); derive MIME from extension (`videoMimeType`). | Probing, upload logic. |
 | `src/tokens.ts` | Keyed token store (N accounts/platform); account resolution (`getYouTubeAccount`/`getFacebookAccount`); legacy-shape migration; reads `google-client.json` / FB app creds. **Atomic writes.** | Upload logic. |
 | `src/state.ts` | Ledger I/O + `isPosted`/`markPosted`/`markFailed`; one-time legacy-key migration (`migrateLedgerKeys`: folder key → stem key). **Atomic writes.** | Business rules about *when* to post. |
-| `src/manifest.ts` | Read + validate the channel `meta.json` (`readChannelManifest`: required `targets` + shared defaults/overrides) and a video meta file (`readManifest(metaPath, videoPath, …)`); `parseTarget`; `publishAt` → UTC & Unix; merge channel + video layers (precedence below); FB window guard; auto-detect `format` from the video's dimensions when absent. | Network calls. |
+| `src/manifest.ts` | Read + validate the channel meta (`readChannelManifest`: resolves `_meta.json` preferred / `meta.json` fallback via `CHANNEL_META_FILENAMES`; required `targets` + shared defaults/overrides) and a video meta file (`readManifest(metaPath, videoPath, …)`); `parseTarget`; `publishAt` → UTC & Unix; merge channel + video layers (precedence below); FB window guard; auto-detect `format` from the video's dimensions when absent. | Network calls. |
 | `src/probe.ts` | Dependency-free ISO-BMFF box parser (MP4 **and** QuickTime/`.mov` — same atom layout): read display dimensions from `moov`→`trak`→`tkhd`, honouring the rotation matrix. Headers only — never the `mdat` payload. | Network calls, format policy (caller decides portrait ⇒ short). |
 | `src/upload-youtube.ts` | `videos.insert` (resumable) + thumbnail + playlist + `#Shorts` hint. Takes a `YouTubeAccount`. Returns `{videoId, url}`. | Token loading, ledger writes. |
 | `src/upload-facebook.ts` | Long-form: 3-phase resumable `/videos` upload (start/transfer/finish) + scheduling. Takes a `FacebookAccount`. Returns `{videoId}`. | Token loading, ledger writes. |
@@ -63,11 +64,13 @@ discovered (`run.ts`) in two places per channel: (1) directly under the channel 
 (2) inside each immediate sub-folder. A folder may hold **several** videos, each its own item.
 Each item's meta is its stem-named `<video>.json` (preferred) or, **in a sub-folder only**, the
 shared sibling `meta.json` (`resolveMetaForVideo`, named wins over shared — no error). The
-channel folder's `meta.json` is the **channel meta**, so a channel-root video must carry its own
-`<video>.json` (no shared-meta fallback there). An item with no resolvable meta is skipped with a
-warning. Per-video thumbnails follow the same rule: `<video>.jpg` preferred, then `thumbnail.jpg`.
+channel folder's `_meta.json`/`meta.json` is the **channel meta**, so a channel-root video must
+carry its own `<video>.json` (no shared-meta fallback there). An item with no resolvable meta is
+skipped with a warning. Per-video thumbnails follow the same rule: `<video>.jpg` preferred, then
+`thumbnail.jpg`.
 
-**Layout & manifests:** `queue/<channel>/meta.json` is the **channel meta** — `readChannelManifest`
+**Layout & manifests:** `queue/<channel>/_meta.json` (preferred, or `meta.json` — first of
+`CHANNEL_META_FILENAMES` present wins) is the **channel meta** — `readChannelManifest`
 validates a required non-empty `targets` array, pulls out `overrides`, and treats every other
 top-level key as a shared `defaults` (`OverrideFields`). A video meta file (`<video>.json` or a
 sub-folder's `meta.json`) is the **video meta** — `readManifest(metaPath, videoPath, channelMeta,
@@ -163,8 +166,8 @@ There is **no** test framework configured. If asked to add tests, the highest-va
 - A folder may hold **multiple** videos (each `.mp4`/`.mov`, see `VIDEO_EXTENSIONS` in `config.ts`;
   `listVideoFiles` in `video.ts`), each pairing with its stem-named `<video>.json` or the shared
   sibling `meta.json`. Videos may sit directly under the channel folder or in a sub-folder; a
-  channel-root video needs its own `<video>.json` (the channel `meta.json` is reserved). A video
-  with no resolvable meta is skipped with a warning. A channel whose `meta.json` is missing/invalid
-  (or has empty `targets`) is skipped whole.
+  channel-root video needs its own `<video>.json` (the channel `_meta.json`/`meta.json` is
+  reserved). A video with no resolvable meta is skipped with a warning. A channel whose channel meta
+  (`_meta.json` or `meta.json`) is missing/invalid (or has empty `targets`) is skipped whole.
 - No video-side validation of Reel constraints (9:16, 3–90 s) — Facebook rejects non-conforming
   files at upload; we surface that error rather than pre-checking.

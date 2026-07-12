@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { FB_MIN_SCHEDULE_SECS, FB_MAX_SCHEDULE_SECS } from './config.js';
+import { FB_MIN_SCHEDULE_SECS, FB_MAX_SCHEDULE_SECS, CHANNEL_META_FILENAMES } from './config.js';
 import { probeVideoDimensions } from './probe.js';
 
 /** Supported upload target platform names. */
@@ -55,7 +55,7 @@ interface RawMeta {
 }
 
 /**
- * Validated channel-level meta.json (`queue/<channel>/meta.json`).
+ * Validated channel-level meta (`queue/<channel>/_meta.json`, or `meta.json`).
  * Declares the upload `targets` once for all child video folders, plus optional
  * shared content defaults and per-platform/target override blocks that fill gaps
  * the video meta.json leaves open.
@@ -97,28 +97,23 @@ export function parseTarget(raw: string): Target {
 }
 
 /**
- * Read and validate a channel-level meta.json (`<channelPath>/meta.json`).
+ * Read and validate a channel-level meta (`<channelPath>/_meta.json`, or `meta.json`).
  *
  * The channel meta owns the upload `targets` (required, non-empty) shared by every
  * child video folder, plus optional shared content `defaults` (any top-level key
  * other than `targets`/`overrides`) and shared `overrides` blocks. These fill gaps
  * the per-video meta.json leaves open (the video layer always wins — see readManifest).
  *
+ * The manifest file is resolved as the first of `CHANNEL_META_FILENAMES` that exists
+ * (`_meta.json` preferred, then plain `meta.json` for backward compatibility).
+ *
  * @param channelPath - Absolute path to the channel folder.
- * @throws            If `targets` is missing/empty or any entry fails to parse, or a
- *                    `format` in the defaults/overrides is not "video" | "short".
+ * @throws            If no channel meta file exists, `targets` is missing/empty or any
+ *                    entry fails to parse, or a `format` in the defaults/overrides is
+ *                    not "video" | "short".
  */
 export async function readChannelManifest(channelPath: string): Promise<ChannelMeta> {
-  const metaPath = path.join(channelPath, 'meta.json');
-  let raw: string;
-  try {
-    raw = await fs.readFile(metaPath, 'utf8');
-  } catch (err: unknown) {
-    if (isNodeError(err) && err.code === 'ENOENT') {
-      throw new Error(`Missing channel meta.json in ${channelPath}`);
-    }
-    throw err;
-  }
+  const { metaPath, raw } = await readChannelMetaFile(channelPath);
 
   const parsed = JSON.parse(raw) as { targets?: unknown; overrides?: unknown; [key: string]: unknown };
   const targets = validateTargets(parsed.targets, `channel meta.json at ${metaPath}`);
@@ -231,6 +226,29 @@ export async function readManifest(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Locate and read the channel manifest file, trying each of `CHANNEL_META_FILENAMES`
+ * in preference order (`_meta.json`, then `meta.json`) and returning the first that
+ * exists along with its contents.
+ *
+ * @param channelPath - Absolute path to the channel folder.
+ * @throws            If none of the candidate filenames exists in the folder.
+ */
+async function readChannelMetaFile(channelPath: string): Promise<{ metaPath: string; raw: string }> {
+  for (const filename of CHANNEL_META_FILENAMES) {
+    const metaPath = path.join(channelPath, filename);
+    try {
+      return { metaPath, raw: await fs.readFile(metaPath, 'utf8') };
+    } catch (err: unknown) {
+      if (isNodeError(err) && err.code === 'ENOENT') continue;
+      throw err;
+    }
+  }
+  throw new Error(
+    `Missing channel meta in ${channelPath} (expected one of: ${CHANNEL_META_FILENAMES.join(', ')})`,
+  );
+}
 
 /**
  * Auto-detect the content format from a video file: a portrait frame
