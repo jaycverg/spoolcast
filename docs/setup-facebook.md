@@ -1,6 +1,6 @@
 # Facebook setup guide
 
-One-time setup so `social-uploader` can post videos and **Reels** to **your Facebook Page**.
+One-time setup so `spoolcast` can post videos and **Reels** to **your Facebook Page**.
 End result: a non-expiring **Page access token** saved in `.secrets/tokens.json`.
 
 **Time:** ~10–15 min. **You need:** a Facebook account that is an **admin of the target Page**.
@@ -17,7 +17,7 @@ End result: a non-expiring **Page access token** saved in `.secrets/tokens.json`
    you haven't (uses your normal Facebook account).
 2. **My Apps → Create App**.
 3. App type: **Business** → Next.
-4. Give it a name (e.g. `social-uploader`), enter your contact email → **Create App**.
+4. Give it a name (e.g. `spoolcast`), enter your contact email → **Create App**.
 
 ## 2. Get the App ID and App Secret
 
@@ -61,7 +61,7 @@ End result: a non-expiring **Page access token** saved in `.secrets/tokens.json`
 Run the auth script and paste the token when prompted:
 
 ```bash
-npm run auth:facebook
+spoolcast auth facebook
 # → "Paste your short-lived user token:"  ← paste it here
 ```
 
@@ -74,17 +74,17 @@ What it does:
 **Non-interactive form** (note the `--` so npm forwards the flag to the script):
 
 ```bash
-npm run auth:facebook -- --token <your-short-lived-token>
+spoolcast auth facebook --token <your-short-lived-token>
 ```
 
-> ⚠️ Don't write `npm run auth:facebook --token <...>` **without** the `--` — npm would swallow
+> ⚠️ Don't write `spoolcast auth facebook --token <...>` **without** the `--` — npm would swallow
 > `--token` as its own flag and the script wouldn't receive it. The interactive prompt above is
 > the foolproof option.
 
 ## 5. Verify
 
 ```bash
-npm start -- --dry-run
+spoolcast run --dry-run
 ```
 
 Offline check that the project runs. The real proof is a live scheduled post — confirm it in
@@ -113,7 +113,7 @@ non-conforming file fails at upload and is recorded as `failed`:
 | `No pages found for this user token` | Your account doesn't admin any Page, or you forgot the `pages_show_list` scope. Confirm you're a Page admin and re-generate the token with all three scopes. |
 | `Missing FB app credentials` | `FB_APP_ID`/`FB_APP_SECRET` not exported and no `.secrets/fb-app.json`. See step 2. |
 | `Long-lived token exchange failed` | Wrong app id/secret, or the short-lived token was already expired (>~1h). Generate a fresh token (step 3) and retry. |
-| Script got no `--token` value | You used `--token` without the `--` separator. Use `npm run auth:facebook -- --token <t>` or just run `npm run auth:facebook` and paste at the prompt. |
+| Script got no `--token` value | You used `--token` without the `--` separator. Use `spoolcast auth facebook --token <t>` or just run `spoolcast auth facebook` and paste at the prompt. |
 | Reel upload fails with a spec error | The clip violates the Reels requirements above (aspect/duration/resolution). Re-export and retry — the ledger will retry just that target. |
 | Scheduled time rejected | Facebook requires the schedule to be **10 min – 6 months** in the future. Adjust `publishAt`. |
 

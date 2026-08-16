@@ -1,20 +1,45 @@
-# social-uploader
+# spoolcast
 
-A folder-based CLI for **scheduled** video uploads to **one YouTube channel** and **one
-Facebook Page** — supporting both long-form videos and short-form **YouTube Shorts / Facebook
-Reels**. Drop a folder per video into `queue/`, run one command, and each video is uploaded as
-*scheduled/private* so the platform publishes it automatically at the time you set.
+[![npm](https://img.shields.io/npm/v/spoolcast.svg)](https://www.npmjs.com/package/spoolcast)
+[![license](https://img.shields.io/npm/l/spoolcast.svg)](./LICENSE)
 
-State is tracked in a ledger (`queue/state.json`), so the tool **auto-discovers new folders** and
-never re-uploads something already posted — you don't tell it which folders to process.
+**A spool folder for social video.** Drop a folder into `queue/`, run one command, and every video
+is uploaded to YouTube and Facebook as *scheduled/private* so the platform publishes it
+automatically at the time you set — long-form, **YouTube Shorts**, and **Facebook Reels**.
 
-- **Stack:** Node ≥ 20 (developed on v24), TypeScript (ESM), run directly via `tsx`.
-- **Platforms:** YouTube Data API v3 + Facebook Graph API. **Multiple channels and Pages** are
-  supported — authorize each once, then reference it by alias in `targets`.
-- **Run model:** manual (`npm start`). No daemon, no scheduler of its own.
+Like a print spooler, it tracks what it has already processed. State lives in a ledger
+(`queue/state.json`), so the tool **auto-discovers new folders** and **never re-uploads something
+already posted** — you never tell it which folders to process.
 
-> This is a standalone app. It has no dependency on the surrounding workspace and can be
-> copied into its own repo as-is.
+```bash
+npx spoolcast run --dry-run    # see the plan, offline
+npx spoolcast run              # upload everything not yet posted
+```
+
+- **Stack:** Node ≥ 20, TypeScript (ESM). One runtime dependency (`googleapis`).
+- **Platforms:** YouTube Data API v3 + Facebook Graph API. **Multiple channels and Pages** —
+  authorize each once, then reference it by alias in `targets`.
+- **Run model:** manual, one-shot. No daemon and no scheduler of its own — pair it with cron or
+  `launchd` if you want it unattended.
+- **Idempotent by design:** safe to re-run at any time; a partial failure retries only the
+  target that failed.
+
+---
+
+## Install
+
+```bash
+npm install -g spoolcast     # then: spoolcast run
+npx spoolcast run            # or run it without installing
+```
+
+`spoolcast` reads `./queue` and `./.secrets` **relative to the directory you run it in**, so keep
+one directory per content library and run the command from inside it. Set `SPOOLCAST_HOME` to
+point at a different working root (useful for cron jobs, where cwd isn't yours to control):
+
+```bash
+SPOOLCAST_HOME=~/vlog spoolcast run
+```
 
 ---
 
@@ -115,7 +140,8 @@ The ledger lives at `queue/state.json`, so it is git-ignored along with the rest
 ## Quick start
 
 ```bash
-npm install
+npm install -g spoolcast
+mkdir -p ~/vlog && cd ~/vlog     # your content library — queue/ and .secrets/ live here
 ```
 
 ### 1. One-time platform setup (manual — see below)
@@ -125,8 +151,8 @@ You must create a Google OAuth client and a Meta app yourself; these can't be sc
 [`docs/setup-facebook.md`](docs/setup-facebook.md). Then authorize each platform once:
 
 ```bash
-npm run auth:youtube                       # opens a browser consent screen
-npm run auth:facebook                      # paste your short-lived user token at the prompt
+spoolcast auth youtube                       # opens a browser consent screen
+spoolcast auth facebook                      # paste your short-lived user token at the prompt
 ```
 
 Both write to `.secrets/tokens.json`.
@@ -149,11 +175,9 @@ on sub-folders reads well and sorts naturally. Per-video thumbnails are `<video>
 ### 3. Preview, then run
 
 ```bash
-npm start -- --dry-run     # offline plan: per-target action (would-upload / skip-posted) + time
-npm start                  # live: uploads everything not already posted
+spoolcast run --dry-run    # offline plan: per-target action (would-upload / skip-posted) + time
+spoolcast run              # live: uploads everything not already posted
 ```
-
-> Note the `--` before flags: `npm start` forwards args after `--` to the script.
 
 ---
 
@@ -272,15 +296,15 @@ Each YouTube channel / Facebook Page is authorized once and stored under an **al
 chosen at consent).
 
 **Authorize each channel** — run the auth flow once per channel, picking a different channel at
-the consent screen each time. The alias is derived from the channel title (or pass `-- --name`):
+the consent screen each time. The alias is derived from the channel title (or pass `--name`):
 
 ```bash
-npm run auth:youtube                       # → saves e.g. alias "mychannel"
-npm run auth:youtube -- --name gaming      # → saves under alias "gaming"
+spoolcast auth youtube                       # → saves e.g. alias "mychannel"
+spoolcast auth youtube --name gaming      # → saves under alias "gaming"
 ```
 
 It prints the alias and the exact target string to use. Facebook Pages work identically via
-`npm run auth:facebook` (alias from the Page name, or `-- --name`).
+`spoolcast auth facebook` (alias from the Page name, or `--name`).
 
 **Reference an account in the channel's `targets`** using `platform:alias`. A single channel
 folder can fan a clip out to several accounts at once:
@@ -308,11 +332,11 @@ List what's authorized any time by checking the alias keys in `.secrets/tokens.j
 
 | Command | What it does |
 |---------|--------------|
-| `npm start` | Upload every queued video × its channel's targets not already posted. |
-| `npm start -- --dry-run` | Print the plan table — the `ITEM` column shows the video-stem key; per-target action (`would-upload` / `would-upload (short\|reel)` / `skip (posted)`) and scheduled time, honouring `--force`. **Fully offline** — reads the local ledger only; no token load, no network. |
-| `npm start -- --force <key-or-prefix>` | Re-post matching items even if ledgered as posted. Matches an exact item key (e.g. `mychannel/2026-06-20_demo/clipA`) or any key under a path prefix (e.g. `mychannel/2026-06-20_demo` forces every video in that folder). |
-| `npm run auth:youtube` | Authorize a YouTube channel (loopback on `127.0.0.1:8080`); run once per channel. Alias via `-- --name <alias>`. |
-| `npm run auth:facebook` | One-time FB token exchange (paste token at the prompt). Non-interactive: `npm run auth:facebook -- --token <t>`. |
+| `spoolcast run` | Upload every queued video × its channel's targets not already posted. |
+| `spoolcast run --dry-run` | Print the plan table — the `ITEM` column shows the video-stem key; per-target action (`would-upload` / `would-upload (short\|reel)` / `skip (posted)`) and scheduled time, honouring `--force`. **Fully offline** — reads the local ledger only; no token load, no network. |
+| `spoolcast run --force <key-or-prefix>` | Re-post matching items even if ledgered as posted. Matches an exact item key (e.g. `mychannel/2026-06-20_demo/clipA`) or any key under a path prefix (e.g. `mychannel/2026-06-20_demo` forces every video in that folder). |
+| `spoolcast auth youtube` | Authorize a YouTube channel (loopback on `127.0.0.1:8080`); run once per channel. Alias via `--name <alias>`. |
+| `spoolcast auth facebook` | One-time FB token exchange (paste token at the prompt). Non-interactive: `spoolcast auth facebook --token <t>`. |
 | `npm run typecheck` | `tsc --noEmit`. |
 
 **Quota awareness:** a YouTube `videos.insert` costs **1600 quota units**; the default daily
@@ -333,7 +357,7 @@ These steps are interactive and on you — the tool can't bootstrap them.
 4. **Credentials** → create an **OAuth 2.0 Client ID** of type **Desktop app**.
 5. Download the JSON and save it as **`.secrets/google-client.json`** (it must have the
    top-level `"installed"` key — the Desktop-app format).
-6. Run `npm run auth:youtube`, complete consent in the browser; the refresh token is saved to
+6. Run `spoolcast auth youtube`, complete consent in the browser; the refresh token is saved to
    `.secrets/tokens.json`. (The consent URL uses `prompt=consent` so a refresh token is
    always returned.)
 
@@ -346,8 +370,8 @@ These steps are interactive and on you — the tool can't bootstrap them.
 3. In the [Graph API Explorer](https://developers.facebook.com/tools/explorer), generate a
    **short-lived user token** with scopes `pages_show_list`, `pages_manage_posts`,
    `pages_read_engagement`.
-4. Run `npm run auth:facebook` and paste the token at the prompt (or non-interactively,
-   `npm run auth:facebook -- --token <short-lived-token>`). The script exchanges it for a
+4. Run `spoolcast auth facebook` and paste the token at the prompt (or non-interactively,
+   `spoolcast auth facebook --token <short-lived-token>`). The script exchanges it for a
    long-lived token, lists your Pages (prompts if more than one), and saves the selected
    `page_id` + non-expiring page token to `.secrets/tokens.json`.
 
@@ -365,50 +389,73 @@ These steps are interactive and on you — the tool can't bootstrap them.
 The first live upload is worth watching end-to-end (neither scheduled-FB nor YouTube quota can
 be exercised without real credentials):
 
-1. `npm start -- --dry-run` — confirm the schedule times look right and which targets are
+1. `spoolcast run --dry-run` — confirm the schedule times look right and which targets are
    pending (`would-upload`) vs already posted (`skip (posted)`).
-2. `npm start` — confirm `✓ posted` for each target and the ledger entry in `queue/state.json`.
+2. `spoolcast run` — confirm `✓ posted` for each target and the ledger entry in `queue/state.json`.
 3. Confirm in **YouTube Studio** (video listed as *Scheduled* with the right time) and
    **Facebook Page → Publishing Tools → Scheduled posts**.
-4. Re-run `npm start` — everything should be skipped (idempotency).
+4. Re-run `spoolcast run` — everything should be skipped (idempotency).
 
 ---
 
-## Project layout
+## Your working directory
+
+This is all `spoolcast` needs. Both paths are resolved from the directory you run the command in
+(or from `SPOOLCAST_HOME`):
 
 ```
-social-uploader/
-├── package.json
-├── tsconfig.json
-├── .gitignore           # .secrets/, queue/, node_modules, *.log, dist/
-├── .secrets/            # NEVER committed — see .gitignore
-│   ├── google-client.json   # you download this from GCP
-│   ├── fb-app.json          # optional (or use FB_APP_ID / FB_APP_SECRET)
-│   └── tokens.json          # written by the auth scripts
-├── src/
-│   ├── config.ts        # paths, scopes, Graph API version, schedule windows
-│   ├── tokens.ts        # load/save tokens; read google-client / fb-app creds
-│   ├── state.ts         # ledger load/save (atomic); isPosted / markPosted / markFailed; legacy-key migration
-│   ├── manifest.ts      # read + validate channel & video meta; merge layers; publishAt → UTC + Unix; format auto-detect
-│   ├── video.ts         # list folder videos (.mp4/.mov); resolve a video's meta (<stem>.json / shared meta.json); MIME helper
-│   ├── probe.ts         # dependency-free MP4/MOV parser: display dimensions (honours rotation)
-│   ├── auth-youtube.ts  # one-time loopback OAuth
-│   ├── auth-facebook.ts # one-time token exchange + page selection
-│   ├── upload-youtube.ts# videos.insert (resumable) + thumbnail + playlist + Shorts hint
-│   ├── upload-facebook.ts# long-form: 3-phase resumable /videos upload + schedule
-│   ├── upload-facebook-reel.ts# reels: /video_reels start → rupload → finish + schedule
-│   └── run.ts           # entry point: scan queue for video items, dispatch (video vs short), record ledger
-└── queue/               # your content, organised by channel (git-ignored)
-    ├── state.json           # the posted-ledger, keyed by the video-stem path (git-ignored)
-    └── <channel>/           # channel folder — _meta.json declares targets
-        ├── _meta.json       # channel meta (or meta.json; _meta.json preferred)
-        ├── <video>.mp4      # channel-root item: needs its own <video>.json
+~/vlog/                      # anywhere you like — run `spoolcast` from here
+├── .secrets/                # credentials — keep out of version control
+│   ├── google-client.json       # you download this from GCP
+│   ├── fb-app.json              # optional (or use FB_APP_ID / FB_APP_SECRET)
+│   └── tokens.json              # written by `spoolcast auth …`
+└── queue/                   # your content, organised by channel
+    ├── state.json               # the posted-ledger, keyed by the video-stem path
+    └── <channel>/               # channel folder — _meta.json declares targets
+        ├── _meta.json           # channel meta (or meta.json; _meta.json preferred)
+        ├── <video>.mp4          # channel-root item: needs its own <video>.json
         ├── <video>.json
-        └── <sub>/           # sub-folder: 1+ videos, each <video>.json or shared meta.json
+        └── <sub>/               # sub-folder: 1+ videos, each <video>.json or shared meta.json
             ├── <video>.mp4
             ├── <video>.json
-            └── meta.json    # shared fallback for videos lacking <video>.json
+            └── meta.json        # shared fallback for videos lacking <video>.json
 ```
+
+> If you keep `queue/` inside a git repo, git-ignore both `queue/` and `.secrets/`.
+
+---
+
+## Development
+
+```bash
+git clone https://github.com/jaycverg/spoolcast.git
+cd spoolcast && npm install
+npm run typecheck              # tsc --noEmit
+npm run build                  # emit dist/
+npm start -- run --dry-run     # run from source via tsx
+```
+
+<details>
+<summary>Source layout</summary>
+
+```
+src/
+├── cli.ts                # command dispatcher — `run`, `auth youtube|facebook`, help, --version
+├── config.ts             # working-root resolution, scopes, Graph API version, schedule windows
+├── tokens.ts             # load/save tokens; read google-client / fb-app creds
+├── state.ts              # ledger load/save (atomic); isPosted / markPosted / markFailed; legacy-key migration
+├── manifest.ts           # read + validate channel & video meta; merge layers; publishAt → UTC + Unix; format auto-detect
+├── video.ts              # list folder videos (.mp4/.mov); resolve a video's meta; MIME helper
+├── probe.ts              # dependency-free MP4/MOV parser: display dimensions (honours rotation)
+├── auth-youtube.ts       # one-time loopback OAuth
+├── auth-facebook.ts      # one-time token exchange + page selection
+├── upload-youtube.ts     # videos.insert (resumable) + thumbnail + playlist + Shorts hint
+├── upload-facebook.ts    # long-form: 3-phase resumable /videos upload + schedule
+├── upload-facebook-reel.ts  # reels: /video_reels start → rupload → finish + schedule
+└── run.ts                # scan queue for video items, dispatch (video vs short), record ledger
+```
+
+</details>
 
 ---
 
@@ -426,7 +473,7 @@ social-uploader/
   verification layer.
 - **Reels are single-shot uploads** — the whole file is read into memory (fine for ≤90 s
   vertical clips; long-form video uses the chunked `/videos` path instead).
-- **No built-in scheduler** — run it manually, or wire `npm start` into cron/`launchd`
+- **No built-in scheduler** — run it manually, or wire `spoolcast run` into cron/`launchd`
   yourself (the ledger makes repeated runs safe).
 
 ---
