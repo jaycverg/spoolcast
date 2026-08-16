@@ -1,14 +1,44 @@
 {
-  "name": "social-uploader",
-  "version": "1.0.0",
-  "description": "Folder-based CLI tool for scheduled YouTube and Facebook video uploads",
+  "name": "spoolcast",
+  "version": "0.1.0",
+  "description": "Spool folder → scheduled YouTube & Facebook uploads. Drop a folder, run once, never double-post.",
+  "keywords": [
+    "youtube",
+    "facebook",
+    "reels",
+    "shorts",
+    "video",
+    "upload",
+    "scheduler",
+    "queue",
+    "cli"
+  ],
   "license": "MIT",
+  "author": "Jayrome Vergara <jaycverg@gmail.com> (https://github.com/jaycverg)",
+  "homepage": "https://github.com/jaycverg/spoolcast#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaycverg/spoolcast.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jaycverg/spoolcast/issues"
+  },
   "type": "module",
+  "bin": {
+    "spoolcast": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "start": "tsx src/run.ts",
-    "auth:youtube": "tsx src/auth-youtube.ts",
-    "auth:facebook": "tsx src/auth-facebook.ts",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/cli.ts",
+    "prepublishOnly": "npm run clean && npm run typecheck && npm run build"
   },
   "dependencies": {
     "googleapis": "^144.0.0"

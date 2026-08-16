@@ -1,8 +1,17 @@
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
+/**
+ * The working root that holds `queue/` and `.secrets/`.
+ *
+ * Resolved from the invoking process's cwd, never from this module's location:
+ * once installed as a package the source lives under `node_modules/`, and
+ * anchoring there would hide the user's queue and write tokens inside the
+ * dependency tree. `SPOOLCAST_HOME` overrides it so the tool can be driven from
+ * another directory (cron jobs, CI, a queue on external storage).
+ */
+const ROOT = process.env.SPOOLCAST_HOME
+  ? path.resolve(process.env.SPOOLCAST_HOME)
+  : process.cwd();
 
 /** Absolute paths used throughout the tool. */
 export const PATHS = {

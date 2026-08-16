@@ -1,6 +1,6 @@
 # YouTube setup guide
 
-One-time setup so `social-uploader` can upload to **your YouTube channel**. End result: a
+One-time setup so `spoolcast` can upload to **your YouTube channel**. End result: a
 `refresh_token` saved in `.secrets/tokens.json`.
 
 **Time:** ~10–15 min. **You need:** a Google account that **owns or manages the target channel**.
@@ -14,7 +14,7 @@ One-time setup so `social-uploader` can upload to **your YouTube channel**. End 
 ## 1. Create a Google Cloud project
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com).
-2. Top bar → project dropdown → **New Project**. Name it anything (e.g. `social-uploader`).
+2. Top bar → project dropdown → **New Project**. Name it anything (e.g. `spoolcast`).
 3. Make sure that new project is selected before continuing.
 
 ## 2. Enable the YouTube Data API v3
@@ -26,7 +26,7 @@ One-time setup so `social-uploader` can upload to **your YouTube channel**. End 
 
 1. **APIs & Services → OAuth consent screen**.
 2. **User type: External** → Create.
-3. Fill the required fields (app name e.g. `social-uploader`, your email for support + developer
+3. Fill the required fields (app name e.g. `spoolcast`, your email for support + developer
    contact). You can leave optional fields blank.
 4. **Scopes:** you don't have to add scopes here for testing — the app requests them at runtime.
    (If asked, the tool uses `.../auth/youtube.upload` and `.../auth/youtube`.)
@@ -46,7 +46,7 @@ One-time setup so `social-uploader` can upload to **your YouTube channel**. End 
 > `"web"` instead, you picked the wrong application type — recreate it as **Desktop app**.
 
 ```
-social-uploader/
+spoolcast/
 └── .secrets/
     └── google-client.json   ← here
 ```
@@ -56,7 +56,7 @@ social-uploader/
 From the project root:
 
 ```bash
-npm run auth:youtube
+spoolcast auth youtube
 ```
 
 What happens:
@@ -65,12 +65,12 @@ What happens:
 3. If that account has a **Brand Account / multiple channels**, Google shows a **channel picker** —
    choose the channel you want to upload to.
 4. You'll see an "unverified app" warning (expected, since the app is in Testing) → **Advanced →
-   Go to social-uploader (unsafe)** → **Allow**.
+   Go to spoolcast (unsafe)** → **Allow**.
 5. On success, the refresh token is saved under an **account alias** (derived from the channel
    title) in `.secrets/tokens.json`. The script prints the alias and the target string to use,
    e.g. `Use it in meta.json as a target: "youtube:mychannel"`.
 
-You can re-run `npm run auth:youtube` anytime to re-authorize (the consent URL uses
+You can re-run `spoolcast auth youtube` anytime to re-authorize (the consent URL uses
 `access_type=offline` + `prompt=consent`, so a refresh token is always returned).
 
 ### Multiple channels
@@ -80,8 +80,8 @@ each is stored under its own alias (one refresh token per channel; a token can't
 Override the alias with `-- --name`:
 
 ```bash
-npm run auth:youtube                    # alias from channel title, e.g. "mychannel"
-npm run auth:youtube -- --name gaming   # force alias "gaming"
+spoolcast auth youtube                    # alias from channel title, e.g. "mychannel"
+spoolcast auth youtube --name gaming   # force alias "gaming"
 ```
 
 Then target a specific channel in `meta.json`: `"targets": ["youtube:mychannel", "youtube:gaming"]`.
@@ -91,7 +91,7 @@ A bare `"youtube"` works only when exactly one channel is authorized. See the ma
 ## 6. Verify
 
 ```bash
-npm start -- --dry-run
+spoolcast run --dry-run
 ```
 
 This is offline and won't use the token, but it confirms the project runs. The real proof is a
@@ -106,7 +106,7 @@ live upload (see the main README's "Verifying a real upload").
 | `Error 403: access_denied` on the consent screen | The account you logged in with isn't listed as a **Test user** (step 3.5). Add it, or log in with a listed account. |
 | `Missing .secrets/google-client.json` | You didn't download/place the OAuth client JSON (step 4). |
 | `google-client.json is malformed — expected "installed" key` | You created a **Web** client instead of **Desktop app**. Recreate as Desktop app. |
-| Uploaded to the wrong channel | You picked the wrong channel/Brand Account at the picker (step 5.3). Re-run `npm run auth:youtube` and choose the right one. |
+| Uploaded to the wrong channel | You picked the wrong channel/Brand Account at the picker (step 5.3). Re-run `spoolcast auth youtube` and choose the right one. |
 | `quotaExceeded` on upload | YouTube allows ~6 uploads/day by default (1600 units each, 10k/day). Wait for the daily reset or [request more quota](https://support.google.com/youtube/contact/yt_api_form). |
 | Port 8080 already in use | Free the port (the loopback port is `YOUTUBE_OAUTH_PORT` in `src/config.ts`). |
 

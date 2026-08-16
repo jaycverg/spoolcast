@@ -1,4 +1,4 @@
-# CLAUDE.md — social-uploader
+# CLAUDE.md — spoolcast
 
 Guidance for Claude Code (and other agents) working in this project. Read this before editing.
 See `README.md` for full user-facing docs; this file is the engineering contract.
@@ -9,7 +9,7 @@ A standalone Node/TypeScript CLI that uploads **scheduled** videos to YouTube ch
 Facebook Pages from a `queue/` organised **by channel**: `queue/<channel>/<video>/`. The
 channel folder's `_meta.json` (preferred, or `meta.json` for backward compat) declares the
 upload `targets` once (plus optional shared defaults/overrides); each child video folder
-inherits them. Manual run (`npm start`).
+inherits them. Manual run (`spoolcast run`).
 Idempotency via a per-folder/per-target ledger at `queue/state.json`, keyed by the
 `<channel>/<video>` path. No web server, no daemon.
 
@@ -29,12 +29,12 @@ workspace. It should remain copy-paste relocatable into its own repo.
 ```bash
 npm install
 npm run typecheck                       # tsc --noEmit — must stay clean
-npm start -- --dry-run                  # offline plan; no tokens, no network
-npm start                               # live upload
-npm start -- --force <key-or-prefix>    # re-post ledgered items; exact item key or a path prefix
-npm run auth:youtube                     # one-time OAuth
-npm run auth:facebook                    # one-time FB token exchange (paste token at prompt)
-npm run auth:facebook -- --token <t>     # non-interactive (note the `--` so npm forwards it)
+spoolcast run --dry-run                  # offline plan; no tokens, no network
+spoolcast run                               # live upload
+spoolcast run --force <key-or-prefix>    # re-post ledgered items; exact item key or a path prefix
+spoolcast auth youtube                     # one-time OAuth
+spoolcast auth facebook                    # one-time FB token exchange (paste token at prompt)
+spoolcast auth facebook --token <t>     # non-interactive 
 ```
 
 **Always run `npm run typecheck` after edits.** There is no test suite (see below), so the
